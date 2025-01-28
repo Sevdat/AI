@@ -3,6 +3,7 @@ import numpy as np
 import win32api
 import win32gui
 import win32con
+import time
 
 ply_point_cloud = o3d.data.PLYPointCloud()
 pcd = o3d.geometry.PointCloud(o3d.io.read_point_cloud(ply_point_cloud.path))
@@ -40,36 +41,61 @@ ctr.set_lookat([2.6172, 2.0475, 1.532])  # Set the point the camera is looking a
 ctr.set_up([-0.0694, -0.9768, 0.2024])  # Set the up direction of the camera
 ctr.set_zoom(0.3412)  # Set the zoom level
 
-value = 0
+
+fps = 1/60
+sensitivity = fps*5
+moveX = 0
+moveY = 0
+movez = 0
 
 def key_callback(vis, key_code):
-    global value
+    global moveX
+    global moveY
     if key_code == ord('W'):  # 'W' key
-        value += 1
-        print(f"W pressed. Value increased to: {value}")
+        moveY = 3
     elif key_code == ord('S'):  # 'S' key
-        value -= 1
-        print(f"S pressed. Value decreased to: {value}")
+        moveY = -3
     elif key_code == ord('A'):  # 'A' key
-        value -= 10
-        print(f"A pressed. Value decreased to: {value}")
+        moveX = 3
     elif key_code == ord('D'):  # 'D' key
-        value += 10
-        print(f"D pressed. Value increased to: {value}")
+        moveX = -3
+    ctr.camera_local_translate(moveX,moveY)
+    moveY = 0
+    moveX = 0
     return False
 
-# Register the key callback
-vis.register_key_callback(ord('W'), lambda vis: key_callback(vis, ord('W')))
-vis.register_key_callback(ord('S'), lambda vis: key_callback(vis, ord('S')))
-vis.register_key_callback(ord('A'), lambda vis: key_callback(vis, ord('A')))
-vis.register_key_callback(ord('D'), lambda vis: key_callback(vis, ord('D')))
+key_actions = {
+    ord('W'): lambda vis: key_callback(vis, ord('W')),  # 'W' key
+    ord('S'): lambda vis: key_callback(vis, ord('S')),  # 'S' key
+    ord('A'): lambda vis: key_callback(vis, ord('A')),  # 'A' key
+    ord('D'): lambda vis: key_callback(vis, ord('D')),  # 'D' key
+}
 
-# Run the visualization loop
-print("Press W, A, S, D to modify the value.")
+# Register all key callbacks using a loop
+for key, action in key_actions.items():
+    vis.register_key_callback(key, action)
+
+mouseX = 0
+mouseY = 0
+def mouse_callback(vis, x,y):
+    ctr.camera_local_rotate(x,y)
+    return False
+window_height -= 48
+window_width -= 19
+def on_mouse_move(vis, x, y):
+    global mouseY
+    global mouseX
+    if (x>window_width/2): mouseX = (x-(window_width/2))*sensitivity
+    else :  mouseX = -((window_width/2)-x)*sensitivity
+
+    if (y>window_height/2): mouseY = (y-(window_height/2))*sensitivity
+    else : mouseY = -((window_height/2)-y)*sensitivity
+    print(f"mouseX {mouseX}, mouseY {mouseY}")
+
+vis.register_mouse_move_callback(on_mouse_move)
+
 while True:
     vis.poll_events()
     vis.update_renderer()
-    if not vis.poll_events():
-        break
-
-vis.destroy_window()
+    ctr.camera_local_rotate(mouseX,mouseY)
+    time.sleep(fps)
