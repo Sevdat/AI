@@ -251,6 +251,10 @@ class Image(Geometry):
         """
         Create a Image from a legacy Open3D Image.
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __copy__(self) -> Image:
         ...
     def __deepcopy__(self, arg0: dict) -> Image:
@@ -271,6 +275,10 @@ class Image(Geometry):
     def __init__(self, arg0: Image) -> None:
         """
         Copy constructor
+        """
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
         """
     def __repr__(self) -> str:
         ...

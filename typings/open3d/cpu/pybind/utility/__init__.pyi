@@ -13,6 +13,10 @@ class DoubleVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: float) -> bool:
         """
         Return true the container contains ``x``
@@ -61,6 +65,10 @@ class DoubleVector:
         ...
     def __ne__(self, arg0: DoubleVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         """
         Return the canonical string representation of this list.
@@ -122,6 +130,10 @@ class IntVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: int) -> bool:
         """
         Return true the container contains ``x``
@@ -170,6 +182,10 @@ class IntVector:
         ...
     def __ne__(self, arg0: IntVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         """
         Return the canonical string representation of this list.
@@ -231,6 +247,10 @@ class Matrix3dVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.float64[3, 3]]) -> bool:
         """
         Return true the container contains ``x``
@@ -276,6 +296,10 @@ class Matrix3dVector:
         ...
     def __ne__(self, arg0: Matrix3dVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -335,6 +359,10 @@ class Matrix4dVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.float64[4, 4]]) -> bool:
         """
         Return true the container contains ``x``
@@ -380,6 +408,10 @@ class Matrix4dVector:
         ...
     def __ne__(self, arg0: Matrix4dVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -439,6 +471,10 @@ class Vector2dVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.float64[2, 1]]) -> bool:
         """
         Return true the container contains ``x``
@@ -487,6 +523,10 @@ class Vector2dVector:
         ...
     def __ne__(self, arg0: Vector2dVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -546,6 +586,10 @@ class Vector2iVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.int32[2, 1]]) -> bool:
         """
         Return true the container contains ``x``
@@ -594,6 +638,10 @@ class Vector2iVector:
         ...
     def __ne__(self, arg0: Vector2iVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -669,6 +717,10 @@ class Vector3dVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.float64[3, 1]]) -> bool:
         """
         Return true the container contains ``x``
@@ -717,6 +769,10 @@ class Vector3dVector:
         ...
     def __ne__(self, arg0: Vector3dVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -809,6 +865,10 @@ class Vector3iVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.int32[3, 1]]) -> bool:
         """
         Return true the container contains ``x``
@@ -857,6 +917,10 @@ class Vector3iVector:
         ...
     def __ne__(self, arg0: Vector3iVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload
@@ -916,6 +980,10 @@ class Vector4iVector:
         """
         Check whether the list is nonempty
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __contains__(self, x: numpy.ndarray[numpy.int32[4, 1]]) -> bool:
         """
         Return true the container contains ``x``
@@ -964,6 +1032,10 @@ class Vector4iVector:
         ...
     def __ne__(self, arg0: Vector4iVector) -> bool:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     @typing.overload

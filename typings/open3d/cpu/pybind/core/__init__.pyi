@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing
+from typing import Any as capsule
 from . import cuda
 from . import kernel
 from . import nns
@@ -3735,7 +3736,6 @@ def triul(A: Tensor, diagonal: int = 0) -> tuple:
     """
 bool: Dtype  # value = Bool
 bool8: Dtype  # value = Bool
-capsule: typing._SpecialForm  # value = typing.Any
 float32: Dtype  # value = Float32
 float64: Dtype  # value = Float64
 int16: Dtype  # value = Int16

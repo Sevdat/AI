@@ -632,6 +632,10 @@ class Image(Geometry2D):
         Returns:
             list[open3d.cpu.pybind.geometry.Image]
         """
+    def __buffer__(self, flags):
+        """
+        Return a buffer object that exposes the underlying memory of the object.
+        """
     def __copy__(self) -> Image:
         ...
     def __deepcopy__(self, arg0: dict) -> Image:
@@ -649,6 +653,10 @@ class Image(Geometry2D):
     @typing.overload
     def __init__(self, arg0: typing_extensions.Buffer) -> None:
         ...
+    def __release_buffer__(self, buffer):
+        """
+        Release the buffer object that exposes the underlying memory of the object.
+        """
     def __repr__(self) -> str:
         ...
     def create_pyramid(self, num_of_levels: int, with_gaussian_filter: bool) -> list[Image]:

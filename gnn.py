@@ -1,12 +1,10 @@
 import open3d as o3d
-import numpy as np
 import win32api
 import win32gui
 import win32con
 import time
 from typing import Optional, Tuple
-import quaternionic
-
+import numpy as np
 
 class Scene:
     def __init__(self, point_cloud: Optional[o3d.geometry.PointCloud] = None, points: Optional[int] = None, colors: Optional[int] = None):
@@ -61,8 +59,7 @@ class Scene:
             self.mouseScrollX: float = 0
             self.mouseScrollY: float = 0
             self.mouseYMoreThan180: bool = False
-            self.ctr = self.scene.window.get_view_control()  # IDE should recognize this now
-
+            self.ctr = self.scene.window.get_view_control()
             self.keyboard_controls = Scene.Camera.CameraKeyboardControls(self)
             self.touchpad_controls = Scene.Camera.CameraTouchPadControls(self)
             self.setRenderDistance(0.1, 1000)
@@ -103,6 +100,37 @@ class Scene:
                 "up": upDirection,
                 "forward": forwardDirection
             }
+        def normalize(self,vec):
+            norm = np.linalg.norm(vec)
+            if norm == 0: 
+                return vec
+            return vec / norm
+            
+        def quatMul(self,q1, q2):
+            w = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2]
+            x = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1]
+            y = q1[3] * q2[1] - q1[0] * q2[2] + q1[1] * q2[3] + q1[2] * q2[0]
+            z = q1[3] * q2[2] + q1[0] * q2[1] - q1[1] * q2[0] + q1[2] * q2[3]
+            return np.ndarray[(x, y, z, w)]
+
+        def angled_axis(self,angle, point, origin):
+            normalized = self.normalize(point - origin)
+            half_angle = angle * 0.5
+            sin_half_angle = np.sin(half_angle)
+            w = np.cos(half_angle)
+            x = normalized[0] * sin_half_angle
+            y = normalized[1] * sin_half_angle
+            z = normalized[2] * sin_half_angle
+            return np.array([x, y, z, w])
+        
+        def inverseQuat(self,q:np.ndarray) :
+            return np.ndarray(-q[0],-q[1],-q[2],q[3])
+        
+        def quatRotate(self,point, origin:np.ndarray, angledAxis):
+            point_direction = np.ndarray([point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]])
+            rotating_vector = np.ndarray(point_direction[0], point_direction[1], point_direction[2],0)
+            rotated_quaternion = self.quatMul(self.quatMul(angledAxis, rotating_vector), self.inverseQuat(angledAxis))
+            return np.ndarray(rotated_quaternion[0] + origin[0], rotated_quaternion[1] + origin[1], rotated_quaternion[2] + origin[2])
 
         class CameraKeyboardControls:
             def __init__(self, camera: 'Scene.Camera'):
