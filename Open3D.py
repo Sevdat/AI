@@ -122,9 +122,6 @@ class Scene:
             self.scene = scene
             self.fps: float = 1 / 60
             self.sensitivity: float = self.fps * 2
-            self.forward: float = 0
-            self.right: float = 0
-            self.up: float = 0
             self.mouseLookX: float = 0
             self.mouseLookY: float = 0
             self.mouseScrollX: float = 0
@@ -135,7 +132,7 @@ class Scene:
             self.setRenderDistance(0.1, 1000)
             self.angleX = 0
             self.angleY = 0
-            self.mouseYMoreThan180 = self.getCameraForwardVector()
+            self.flipped = False
 
         def cameraFront(self, vec:np.array) -> None:
             self.ctr.set_front(vec)
@@ -172,39 +169,42 @@ class Scene:
             rotationMatrix = extrinsicMatrix[:3, :3]
             pitch = np.arcsin(-rotationMatrix[2, 1])  # Simplified for this example
             return pitch
+        
+        def flipCameraUpsideDown(self):
+            cameraParam = self.ctr.convert_to_pinhole_camera_parameters()
+            extrinsicMatrix = cameraParam.extrinsic
+            flip_matrix = np.array([
+                [1, 0, 0, 0],
+                [0, -1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]
+            ])
+            rotate_y_matrix = np.array([
+                [-1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, -1, 0],
+                [0, 0, 0, 1]
+            ])
+            combined_matrix = np.dot(rotate_y_matrix, flip_matrix)
+            cameraParam.extrinsic = np.dot(combined_matrix, extrinsicMatrix)
+            self.ctr.convert_from_pinhole_camera_parameters(cameraParam)
+            self.flipped = not self.flipped
+
         class CameraKeyboardControls:
             def __init__(self, camera: 'Scene.Camera'):
                 self.camera = camera
                 key_actions = {
-                    ord('W'): lambda vis: self.key_callback(vis, ord('W')),
-                    ord('S'): lambda vis: self.key_callback(vis, ord('S')),
                     ord('A'): lambda vis: self.key_callback(vis, ord('A')),
-                    ord('D'): lambda vis: self.key_callback(vis, ord('D')),
-                    ord('E'): lambda vis: self.key_callback(vis, ord('E')),
-                    ord('Q'): lambda vis: self.key_callback(vis, ord('Q')),
+                    32: lambda vis: self.key_callback(vis, 32),  # Space bar key
                 }
                 for key, action in key_actions.items():
                     self.camera.scene.window.register_key_callback(key, action)
 
             def key_callback(self, vis, key_code: int) -> bool:
                 if key_code == ord('W'):
-
-                    print(self.camera.getOriginAndDirection())
-                elif key_code == ord('S'):
-                    self.camera.forward = -3
-                elif key_code == ord('D'):
-                    self.camera.right = 3
-                elif key_code == ord('A'):
-                    self.camera.right = -3
-                elif key_code == ord('E'):
-                    self.camera.up = 3
-                elif key_code == ord('Q'):
-                    self.camera.up = -3
-
-                self.camera.ctr.camera_local_translate(self.camera.forward, self.camera.right, self.camera.up)
-                self.camera.right = 0
-                self.camera.forward = 0
-                self.camera.up = 0
+                    ""
+                elif key_code == 32:
+                    self.camera.flipCameraUpsideDown()
                 return False
 
         class CameraTouchPadControls:
@@ -238,9 +238,13 @@ while True:
     scene2.window.poll_events()
     scene2.window.update_renderer()
     current = scene2.camera.getCameraPitch()
-    if current < PITCH_LIMIT_MIN and scene2.camera.mouseLookY<0: scene2.camera.mouseLookY = 0
-    if current > PITCH_LIMIT_MAX  and scene2.camera.mouseLookY>0:  scene2.camera.mouseLookY = 0
+    print(current*180/np.pi)
+    if (scene2.camera.flipped) :
+        if current < PITCH_LIMIT_MIN and scene2.camera.mouseLookY>0: scene2.camera.mouseLookY = 0
+        if current > PITCH_LIMIT_MAX  and scene2.camera.mouseLookY<0:  scene2.camera.mouseLookY = 0
+    else:
+        if current < PITCH_LIMIT_MIN and scene2.camera.mouseLookY<0: scene2.camera.mouseLookY = 0
+        if current > PITCH_LIMIT_MAX  and scene2.camera.mouseLookY>0:  scene2.camera.mouseLookY = 0
     scene2.camera.ctr.camera_local_translate(scene2.camera.mouseScrollY, scene2.camera.mouseScrollX, 0)
     scene2.camera.ctr.camera_local_rotate(scene2.camera.mouseLookX,scene2.camera.mouseLookY)
-    # print(scene2.camera.getCameraPitch()*180/np.pi)
     time.sleep(scene2.camera.fps)
