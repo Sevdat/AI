@@ -5,6 +5,77 @@ import win32con
 import time
 from typing import Optional, Tuple
 import numpy as np
+import numba
+
+@numba.jit(nopython=True)
+def normalize(vec:np.array) -> np.array:
+    norm = length(vec)
+    if norm == 0:
+        return vec
+    return vec / norm
+
+
+@numba.jit(nopython=True)
+def quatMul(q1:np.array, q2:np.array) -> np.array:
+    w = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2]
+    x = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1]
+    y = q1[3] * q2[1] - q1[0] * q2[2] + q1[1] * q2[3] + q1[2] * q2[0]
+    z = q1[3] * q2[2] + q1[0] * q2[1] - q1[1] * q2[0] + q1[2] * q2[3]
+    return np.array([x, y, z, w])
+
+
+@numba.jit(nopython=True)
+def angledAxis(angle:float, point:np.array, origin:np.array) -> np.array:
+    normalized = normalize(point - origin)  # Use cls to call static methods
+    halfAngle = angle * 0.5
+    sinHalfAngle = np.sin(halfAngle)
+    w = np.cos(halfAngle)
+    x = normalized[0] * sinHalfAngle
+    y = normalized[1] * sinHalfAngle
+    z = normalized[2] * sinHalfAngle
+    return np.array([x, y, z, w])
+
+
+@numba.jit(nopython=True)
+def inverseQuat(q:np.array) -> np.array:
+    return np.array([-q[0], -q[1], -q[2], q[3]])
+
+def quatRotate(point:np.array, origin:np.array, angledAxis:np.array) -> np.array:
+    pointDirection = point - origin
+    rotatingVector = np.array([pointDirection[0], pointDirection[1], pointDirection[2], 0.0])
+    rotatedQuaternion = quatMul(quatMul(angledAxis, rotatingVector), inverseQuat(angledAxis))
+    return np.array([rotatedQuaternion[0] + origin[0],rotatedQuaternion[1] + origin[1],rotatedQuaternion[2] + origin[2]])
+
+@numba.jit(nopython=True)        
+def convertTo360(angle:float) -> float:
+    if angle<0 : 
+        return 2*np.pi - (np.abs(angle) % (2*np.pi))
+    else: 
+        return np.abs(angle) % (2*np.pi)
+
+@numba.jit(nopython=True)      
+def length(vectorDirections:np.array) -> float:
+    return np.sqrt(np.sum(vectorDirections**2))
+
+@numba.jit(nopython=True) 
+def direction(point:np.array, origin:np.array) -> np.array:
+    vec = point-origin
+    return vec/length(vec)
+
+@numba.jit(nopython=True) 
+def distanceFromOrigin(point:np.array, origin:np.array, distance:float) -> np.array:
+    return direction(point,origin)*distance
+
+def setPointAroundOrigin(originAndDirection:np.array,angleY:float,angleX:float) -> np.array:
+    point = originAndDirection[2]
+    angleY = convertTo360(angleY)
+    angleX = convertTo360(angleX)
+    rotY = angledAxis(angleY,np.array([10,0,0])+originAndDirection[1],originAndDirection[0])
+    rotX = angledAxis(angleX,np.array([0,10,0])+originAndDirection[2],originAndDirection[0])
+    point = quatRotate(point,originAndDirection[0],rotY)
+    point = quatRotate(point,originAndDirection[0],rotX)
+    point = originAndDirection[0] + distanceFromOrigin(point,originAndDirection[0],10)
+    return point
 
 class Scene:
     def __init__(self, point_cloud: Optional[o3d.geometry.PointCloud] = None, points: Optional[int] = None, colors: Optional[int] = None):
@@ -58,20 +129,22 @@ class Scene:
             self.mouseLookY: float = 0
             self.mouseScrollX: float = 0
             self.mouseScrollY: float = 0
-            self.mouseYMoreThan180: bool = False
             self.ctr = self.scene.window.get_view_control()
             self.keyboard_controls = Scene.Camera.CameraKeyboardControls(self)
             self.touchpad_controls = Scene.Camera.CameraTouchPadControls(self)
             self.setRenderDistance(0.1, 1000)
+            self.angleX = 0
+            self.angleY = 0
+            self.mouseYMoreThan180 = self.getCameraForwardVector()
 
-        def cameraFront(self, x: float, y: float, z: float) -> None:
-            self.ctr.set_front([x, y, z])
+        def cameraFront(self, vec:np.array) -> None:
+            self.ctr.set_front(vec)
 
-        def cameraLookat(self, x: float, y: float, z: float) -> None:
-            self.ctr.set_lookat([x, y, z])
+        def cameraLookat(self, vec:np.array) -> None:
+            self.ctr.set_lookat(vec)
 
-        def cameraSetUp(self, x: float, y: float, z: float) -> None:
-            self.ctr.set_up([x, y, z])
+        def cameraSetUp(self, vec:np.array) -> None:
+            self.ctr.set_up(vec)
 
         def cameraSetZoom(self, zoom: float) -> None:
             self.ctr.set_zoom(zoom)
@@ -80,58 +153,25 @@ class Scene:
             self.ctr.set_constant_z_near(near)
             self.ctr.set_constant_z_far(far)
 
-        def getOriginAndDirection(self) -> dict:
+        def getOriginAndDirection(self) -> np.array:
             extrinsicMatrix = self.ctr.convert_to_pinhole_camera_parameters().extrinsic
             rotationMatrix = extrinsicMatrix[:3, :3]
             origin = extrinsicMatrix[:3, 3]
-
-            rightDirection = rotationMatrix[:, 0]
-            rightDirection = rightDirection / np.linalg.norm(rightDirection)
-
-            upDirection = rotationMatrix[:, 1]
-            upDirection = upDirection / np.linalg.norm(upDirection)
-
-            forwardDirection = -rotationMatrix[:, 2]
-            forwardDirection = forwardDirection / np.linalg.norm(forwardDirection)
-
-            return {
-                "origin": origin,
-                "right": rightDirection,
-                "up": upDirection,
-                "forward": forwardDirection
-            }
-        def normalize(self,vec):
-            norm = np.linalg.norm(vec)
-            if norm == 0: 
-                return vec
-            return vec / norm
-            
-        def quatMul(self,q1, q2):
-            w = q1[3] * q2[3] - q1[0] * q2[0] - q1[1] * q2[1] - q1[2] * q2[2]
-            x = q1[3] * q2[0] + q1[0] * q2[3] + q1[1] * q2[2] - q1[2] * q2[1]
-            y = q1[3] * q2[1] - q1[0] * q2[2] + q1[1] * q2[3] + q1[2] * q2[0]
-            z = q1[3] * q2[2] + q1[0] * q2[1] - q1[1] * q2[0] + q1[2] * q2[3]
-            return np.ndarray[(x, y, z, w)]
-
-        def angled_axis(self,angle, point, origin):
-            normalized = self.normalize(point - origin)
-            half_angle = angle * 0.5
-            sin_half_angle = np.sin(half_angle)
-            w = np.cos(half_angle)
-            x = normalized[0] * sin_half_angle
-            y = normalized[1] * sin_half_angle
-            z = normalized[2] * sin_half_angle
-            return np.array([x, y, z, w])
+            rightDirection = origin+rotationMatrix[:, 0]
+            upDirection = origin+rotationMatrix[:, 1]
+            forwardDirection = origin-rotationMatrix[:, 2]
+            return np.array([origin,rightDirection,upDirection,forwardDirection])
         
-        def inverseQuat(self,q:np.ndarray) :
-            return np.ndarray(-q[0],-q[1],-q[2],q[3])
-        
-        def quatRotate(self,point, origin:np.ndarray, angledAxis):
-            point_direction = np.ndarray([point[0] - origin[0], point[1] - origin[1], point[2] - origin[2]])
-            rotating_vector = np.ndarray(point_direction[0], point_direction[1], point_direction[2],0)
-            rotated_quaternion = self.quatMul(self.quatMul(angledAxis, rotating_vector), self.inverseQuat(angledAxis))
-            return np.ndarray(rotated_quaternion[0] + origin[0], rotated_quaternion[1] + origin[1], rotated_quaternion[2] + origin[2])
+        def getCameraForwardVector(self,):
+            extrinsicMatrix = self.ctr.convert_to_pinhole_camera_parameters().extrinsic
+            forwardVector = extrinsicMatrix[2, :3]
+            return forwardVector / np.linalg.norm(forwardVector)
 
+        def getCameraPitch(self):
+            extrinsicMatrix = self.ctr.convert_to_pinhole_camera_parameters().extrinsic
+            rotationMatrix = extrinsicMatrix[:3, :3]
+            pitch = np.arcsin(-rotationMatrix[2, 1])  # Simplified for this example
+            return pitch
         class CameraKeyboardControls:
             def __init__(self, camera: 'Scene.Camera'):
                 self.camera = camera
@@ -148,7 +188,8 @@ class Scene:
 
             def key_callback(self, vis, key_code: int) -> bool:
                 if key_code == ord('W'):
-                    self.camera.forward = 3
+
+                    print(self.camera.getOriginAndDirection())
                 elif key_code == ord('S'):
                     self.camera.forward = -3
                 elif key_code == ord('D'):
@@ -171,7 +212,6 @@ class Scene:
                 self.camera = camera
                 self.camera.scene.window.register_mouse_move_callback(self.on_mouse_move)
                 self.camera.scene.window.register_mouse_scroll_callback(self.on_mouse_scroll)
-
             def on_mouse_move(self, obj, x: int, y: int) -> None:
                 if x > self.camera.scene.windowWidth / 2:
                     self.camera.mouseLookX = (x-(self.camera.scene.windowWidth/2))*self.camera.sensitivity
@@ -179,22 +219,28 @@ class Scene:
                     self.camera.mouseLookX = -((self.camera.scene.windowWidth/2)-x)*self.camera.sensitivity
 
                 if y > self.camera.scene.windowHeight / 2:
-                    self.camera.mouseLookY = (y-(self.camera.scene.windowHeight/2))*self.camera.sensitivity
+                    self.camera.mouseLookY = (y-(self.camera.scene.windowHeight/2))*self.camera.sensitivity 
                 else:
-                    self.camera.mouseLookY = -((self.camera.scene.windowHeight/2)-y)*self.camera.sensitivity
+                    self.camera.mouseLookY = -((self.camera.scene.windowHeight/2)-y)*self.camera.sensitivity 
+
 
             def on_mouse_scroll(self, obj, x: int, y: int) -> None:
-                self.camera.mouseScrollX -= x*self.camera.sensitivity/10
+                self.camera.mouseScrollX += x*self.camera.sensitivity/10
                 self.camera.mouseScrollY -= y*self.camera.sensitivity/10
-                print(self.camera.getOriginAndDirection())
+                
 
 
 # Example usage
-scene = Scene(o3d.geometry.PointCloud(o3d.io.read_point_cloud(o3d.data.PLYPointCloud().path)))
-
+scene2 = Scene(o3d.geometry.PointCloud(o3d.io.read_point_cloud(o3d.data.PLYPointCloud().path)))
+PITCH_LIMIT_MIN = np.radians(-60)  # -70 degrees
+PITCH_LIMIT_MAX = np.radians(60)   # 70 degrees
 while True:
-    scene.window.poll_events()
-    scene.window.update_renderer()
-    scene.camera.ctr.camera_local_rotate(scene.camera.mouseLookX, scene.camera.mouseLookY)
-    scene.camera.ctr.camera_local_translate(scene.camera.mouseScrollY, scene.camera.mouseScrollX, 0)
-    time.sleep(scene.camera.fps)
+    scene2.window.poll_events()
+    scene2.window.update_renderer()
+    current = scene2.camera.getCameraPitch()
+    if current < PITCH_LIMIT_MIN and scene2.camera.mouseLookY<0: scene2.camera.mouseLookY = 0
+    if current > PITCH_LIMIT_MAX  and scene2.camera.mouseLookY>0:  scene2.camera.mouseLookY = 0
+    scene2.camera.ctr.camera_local_translate(scene2.camera.mouseScrollY, scene2.camera.mouseScrollX, 0)
+    scene2.camera.ctr.camera_local_rotate(scene2.camera.mouseLookX,scene2.camera.mouseLookY)
+    # print(scene2.camera.getCameraPitch()*180/np.pi)
+    time.sleep(scene2.camera.fps)
