@@ -6,6 +6,10 @@ import time
 from typing import Optional, Tuple
 import numpy as np
 import numba
+import cupy as cp
+
+x = cp.arange(10)
+print(x)
 
 @numba.jit(nopython=True)
 def normalize(vec:np.array) -> np.array:
